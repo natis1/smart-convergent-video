@@ -244,7 +244,7 @@ void runner::doSimulations(runner::runSettings rs)
     bool optimalRateFound = false;
     std::cout << "Running fast rate optimization" << std::endl;
     while (!optimalRateFound) {
-        double trueTarget = rs.vmafTarget + ((100- rs.vmafTarget) * 0.3);
+        double trueTarget = rs.vmafTarget * 0.9;
         double trueEpsilon = 1.0;
         singleRun sr;
         sr.speed = 65536 + 8 + 128 + 96;
