@@ -56,7 +56,7 @@ void runner::doSimulations(runner::runSettings rs)
 {
     auto nextSpeed = [] (int speed, bool altTune, bool fwdKF) -> int {
         int trueSpeed = speed & 31;
-        if (trueSpeed > 0) {
+        if (trueSpeed > 1) {
             return speed - 1;
         }
 
@@ -68,12 +68,12 @@ void runner::doSimulations(runner::runSettings rs)
         int altTuneInt = speed & 96;
 
         if (fwdKF && ( (speed & 128) == 128)) {
-            return (speed + 5 - 128);
+            return (speed + 4 - 128);
         } else if (altTune && altTuneInt > 0) {
             if (fwdKF)
-                return (speed + 5 + 128 - 32);
+                return (speed + 4 + 128 - 32);
             else
-                return (speed + 5 - 32);
+                return (speed + 4 - 32);
         }
         return 0;
     };
