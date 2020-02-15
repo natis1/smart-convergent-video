@@ -91,9 +91,9 @@ void runner::doSimulations(runner::runSettings rs)
         }
         myfile.open(rs.outputCSVFile);
         if (rs.useQFactor) {
-            myfile << "Pass#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size";
+            myfile << "Test#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size";
         } else {
-            myfile << "Pass#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size";
+            myfile << "Test#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size";
         }
     }
 
@@ -724,13 +724,13 @@ void runner::runSim(runner::singleRun& sr, runner::runSettings rs, std::ofstream
 
     std::cout << "Results for run are:" << std::endl;
     if (rs.useQFactor) {
-        std::cout << "Pass#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
+        std::cout << "Test#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
         if (rs.outputCSV)
             *myfile << std::endl << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize;
 
         std::cout << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize << std::endl;
     } else {
-        std::cout << "Pass#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
+        std::cout << "Test#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
 
         if (rs.outputCSV)
             *myfile << std::endl << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize;
