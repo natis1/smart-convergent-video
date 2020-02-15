@@ -56,7 +56,7 @@ void runner::doSimulations(runner::runSettings rs)
 {
     auto nextSpeed = [] (int speed, bool altTune, bool fwdKF) -> int {
         int trueSpeed = speed & 31;
-        if (trueSpeed > 1) {
+        if ((trueSpeed > 4 && (speed & 65536) == 65536) || trueSpeed > 1) {
             return speed - 1;
         }
 
