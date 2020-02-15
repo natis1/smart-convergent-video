@@ -91,9 +91,9 @@ void runner::doSimulations(runner::runSettings rs)
         }
         myfile.open(rs.outputCSVFile);
         if (rs.useQFactor) {
-            myfile << "Pass#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Size";
+            myfile << "Pass#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size";
         } else {
-            myfile << "Pass#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Size";
+            myfile << "Pass#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size";
         }
     }
 
@@ -702,20 +702,40 @@ void runner::runSim(runner::singleRun& sr, runner::runSettings rs, std::ofstream
     std::string vmafVal = vmafOut.substr(found, vmafOut.size() - found);
     sr.vmaf = std::atof(vmafVal.c_str());
 
+    int trueSpeed = sr.speed & 31;
+    bool fastDeadline = (sr.speed & 65536) == 65536;
+    int altTuneInt = sr.speed & 96;
+    std::string altTune = "";
+    switch (altTuneInt) {
+        case 0:
+            altTune = "vmaf_with_preprocessing";
+            break;
+        case 32:
+            altTune = "vmaf_without_preprocessing";
+            break;
+        case 64:
+            altTune = "ssim";
+            break;
+        case 96:
+            altTune = "psnr";
+            break;
+    }
+    bool fwdKF = (sr.speed & 128) != 128;
+
     std::cout << "Results for run are:" << std::endl;
     if (rs.useQFactor) {
-        std::cout << "Pass#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Size" << std::endl;
+        std::cout << "Pass#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
         if (rs.outputCSV)
-            *myfile << std::endl << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << sr.speed << ", " << sr.videoSize;
+            *myfile << std::endl << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize;
 
-        std::cout << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << sr.speed << ", " << sr.videoSize << std::endl;
+        std::cout << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize << std::endl;
     } else {
-        std::cout << "Pass#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Size" << std::endl;
+        std::cout << "Pass#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
 
         if (rs.outputCSV)
-            *myfile << std::endl << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << sr.speed << ", " << sr.videoSize;
+            *myfile << std::endl << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize;
 
-        std::cout << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << sr.speed << ", " << sr.videoSize << std::endl;
+        std::cout << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize << std::endl;
     }
 
 
