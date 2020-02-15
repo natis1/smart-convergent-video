@@ -45,6 +45,9 @@ void printHelpMenu() {
     std::cout << " -x value\tRescale the video to a width when testing VMAF. (defaults to preserving the aspect ratio)." << std::endl;
     std::cout << " -0\t\tOutput to and test with 10 bit video. Uses the yuv420p10le format." << std::endl;
     std::cout << " -2\t\tOutput to and test with 12 bit video. Uses the yuv420p12le format." << std::endl;
+    std::cout << " -k\tTest speed impact of forward keyframes (experimental)" << std::endl;
+    std::cout << " -K\tTest speed impact of alternative tunings (experimental)" << std::endl;
+
     std::cout << " -n\t\tDo not use 2 pass (VERY NOT RECOMMENDED) for encoding." << std::endl;
 
 
@@ -64,7 +67,7 @@ int main(int argc, char **argv) {
     struct runner::runSettings rs;
     int opt;
 
-    while((opt = getopt(argc, argv, ":V:i:o:t:T:q:Q:O:x:y:02pnhP:")) != -1){ //get option from the getopt() method
+    while((opt = getopt(argc, argv, ":V:i:o:t:T:q:Q:O:x:y:02pnhkKP:")) != -1){ //get option from the getopt() method
         switch(opt){
 
             //For option i, r, l, print that these are options
@@ -115,6 +118,12 @@ int main(int argc, char **argv) {
                 break;
             case 'p':
                 rs.useCPUTime = false;
+                break;
+            case 'k':
+                rs.testFwdFrames = true;
+                break;
+            case 'K':
+                rs.testAlternativeTunings = true;
                 break;
             case ':':
                 std::cout << "ERROR... option needs a value specified" << std::endl;
