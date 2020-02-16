@@ -56,11 +56,11 @@ void runner::doSimulations(runner::runSettings rs)
 {
     auto nextSpeed = [] (int speed, bool altTune, bool fwdKF) -> int {
         int trueSpeed = speed & 31;
-        if ((trueSpeed > 4 && (speed & 65536) == 65536) || trueSpeed > 1) {
+        if (trueSpeed > 4 || (trueSpeed > 1 && (speed & 65536) != 65536)) {
             return speed - 1;
         }
 
-        bool fastDeadline = (speed & 65536) == 65536;
+        bool fastDeadline = ((speed & 65536) == 65536);
         if (fastDeadline) {
             return (5 + 96 + 128);
         }
@@ -181,6 +181,11 @@ void runner::doSimulations(runner::runSettings rs)
         rs.videoxRes = context->width;
         rs.videoyRes = context->height;
 
+        if (rs.yRes <= 0) {
+            rs.yRes = rs.videoyRes;
+            rs.xRes = rs.videoxRes;
+        }
+
 
         std::cout << "Source video resolution is " << rs.videoxRes << "x" << rs.videoyRes << std::endl;
         double aspectRatio = (double) context->width / context->height;
@@ -288,7 +293,7 @@ void runner::doSimulations(runner::runSettings rs)
         sr.qFactor = optimalRate;
         sr.optimizationPassNumber = 2;
         sr.speed = optimalSpeed;
-        runSim(sr, rs, &myfile);
+        std::string c = runSim(sr, rs, &myfile);
         runsList.push_back(sr);
         if (rs.targetTimeRatio && optimalSpeed == 0) {
             double fitnessMax = 0;
@@ -324,7 +329,12 @@ void runner::doSimulations(runner::runSettings rs)
                 optimalSpeedFound = true;
             }
         }
-        optimalSpeed = nextSpeed(optimalSpeed, rs.testAlternativeTunings, rs.testFwdFrames);
+        if (rs.useQFactor && optimalSpeedFound) {
+            std::cout << "Your ideal aomenc settings are: " << std::endl;
+            std::cout << c << std::endl;
+        }
+        if (!optimalSpeedFound)
+            optimalSpeed = nextSpeed(optimalSpeed, rs.testAlternativeTunings, rs.testFwdFrames);
     }
 
     // Pass 3 finds the exact bitrate and does nothing when q factor is used
@@ -336,13 +346,22 @@ void runner::doSimulations(runner::runSettings rs)
         sr.speed = optimalSpeed;
         sr.optimizationPassNumber = 3;
         sr.bitrate = getNextTestBitrate(runsList, rs.vmafTarget, sr.optimizationPassNumber, optimalRate);
-        runSim(sr, rs, &myfile);
+        std::string c = runSim(sr, rs, &myfile);
         //std::cout << sr.vmaf << " when run with a bitrate of " << sr.bitrate << std::endl;
         runsList.push_back(sr);
 
         if (std::abs(sr.vmaf - rs.vmafTarget) < rs.vmafEpsilon) {
             exactBitrateFound = true;
             exactBitrate = sr.bitrate;
+            std::cout << "Your ideal aomenc settings are: " << std::endl;
+            std::cout << c << std::endl;
+        }
+        // the sim got stuck
+        else if ( (int) (sr.bitrate) == (int) (runsList.at(runsList.size() - 2).bitrate) && runsList.at(runsList.size() - 2).optimizationPassNumber == 3) {
+            exactBitrateFound = true;
+            exactBitrate = sr.bitrate;
+            std::cout << "Your ideal aomenc settings are: " << std::endl;
+            std::cout << c << std::endl;
         }
     }
 
@@ -373,25 +392,23 @@ double runner::getNextTestBitrate(std::vector<singleRun> &runsList, double targe
     bool allLess = true;
     bool allGreater = true;
 
-    int close1Index;
-    int close2Index;
-    double close1 = 101;
-    double close2 = 101;
+    int closeLowIndex;
+    int closeHighIndex;
+    double closeLow = -101;
+    double closeHigh = 101;
     for (int i = 0; i < vmafList.size(); i++){
         if (vmafList.at(i) > target) {
             allLess = false;
         } else {
             allGreater = false;
         }
-        double vmafDiff = std::abs(vmafList.at(i) - target);
-        if (close1 > vmafDiff) {
-            close2 = close1;
-            close2Index = close1Index;
-            close1 = vmafDiff;
-            close1Index = i;
-        } else if (close2 > vmafDiff) {
-            close2 = vmafDiff;
-            close2Index = i;
+        double vmafDiff = vmafList.at(i) - target;
+        if (closeLow < vmafDiff && vmafDiff < 0.0) {
+            closeLow = vmafDiff;
+            closeLowIndex = i;
+        } else if (closeHigh > vmafDiff && vmafDiff > 0.0) {
+            closeHigh = vmafDiff;
+            closeHighIndex = i;
         }
     }
     if (allLess) {
@@ -400,7 +417,7 @@ double runner::getNextTestBitrate(std::vector<singleRun> &runsList, double targe
         return brList.at(vmafList.size() - 1) * 0.5;
     }
     // if not get the middle between the two closest results.
-    return (brList.at(close1Index) + brList.at(close2Index)) / 2.0;
+    return (brList.at(closeHighIndex) + brList.at(closeLowIndex)) / 2.0;
 }
 
 double runner::getNextTestQFactor(std::vector<singleRun> &runsList, double target, long passNum, double defaultQ)
@@ -420,10 +437,10 @@ double runner::getNextTestQFactor(std::vector<singleRun> &runsList, double targe
     bool allLess = true;
     bool allGreater = true;
 
-    int close1Index;
-    int close2Index;
-    double close1 = 101;
-    double close2 = 101;
+    int closeLowIndex;
+    int closeHighIndex;
+    double closeLow = -101;
+    double closeHigh = 101;
     for (int i = 0; i < vmafList.size(); i++){
         if (vmafList.at(i) > target) {
             allLess = false;
@@ -431,14 +448,12 @@ double runner::getNextTestQFactor(std::vector<singleRun> &runsList, double targe
             allGreater = false;
         }
         double vmafDiff = std::abs(vmafList.at(i) - target);
-        if (close1 > vmafDiff) {
-            close2 = close1;
-            close2Index = close1Index;
-            close1 = vmafDiff;
-            close1Index = i;
-        } else if (close2 > vmafDiff) {
-            close2 = vmafDiff;
-            close2Index = i;
+        if (closeLow < vmafDiff && vmafDiff < 0.0) {
+            closeLow = vmafDiff;
+            closeLowIndex = i;
+        } else if (closeHigh > vmafDiff && vmafDiff > 0.0) {
+            closeHigh = vmafDiff;
+            closeHighIndex = i;
         }
     }
     if (allLess) {
@@ -455,11 +470,11 @@ double runner::getNextTestQFactor(std::vector<singleRun> &runsList, double targe
         }
     }
     // if not get the middle between the two closest results.
-    return (int) ((qList.at(close1Index) + qList.at(close2Index)) / 2.0);
+    return (int) ((qList.at(closeHighIndex) + qList.at(closeLowIndex)) / 2.0);
 }
 
 
-void runner::runSim(runner::singleRun& sr, runner::runSettings rs, std::ofstream *myfile)
+std::string runner::runSim(runner::singleRun& sr, runner::runSettings rs, std::ofstream *myfile)
 {
     bool twoRuns = ( (sr.speed & 65536) == 0 && rs.useTwoPass);
     auto exec = [] (const char* cmd) {
@@ -520,7 +535,7 @@ void runner::runSim(runner::singleRun& sr, runner::runSettings rs, std::ofstream
         cmd += " --bit-depth=" + std::to_string(rs.bits) + " --width=" + std::to_string(rs.xRes) + " --height=" + std::to_string(rs.yRes) + " --fps=" + std::to_string(rs.videoFPSNum) + "/" + std::to_string(rs.videoFPSDenom);
 
         if (runNumber != 0)
-            cmd += " --passes=2 --pass=" + std::to_string(runNumber);
+            cmd += " --fpf='" + rs.temporaryStorageLocation + "/passfile.dat'" + " --passes=2 --pass=" + std::to_string(runNumber);
         else
             cmd += " --passes=1 --pass=1";
         cmd += " --input-bit-depth=" + std::to_string(rs.videoDepth);
@@ -726,25 +741,35 @@ void runner::runSim(runner::singleRun& sr, runner::runSettings rs, std::ofstream
     if (rs.useQFactor) {
         std::cout << "Test#, Qfac, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
         if (rs.outputCSV)
-            *myfile << std::endl << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize;
+            *myfile << std::endl << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << ", " << sr.videoSize;
 
-        std::cout << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize << std::endl;
+        std::cout << sr.optimizationPassNumber << ", " << sr.qFactor << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << ", " << sr.videoSize << std::endl;
     } else {
         std::cout << "Test#, Bitrate, vmaf, Pass1CTime, Pass2CTime, NetCTime, NetRT, Speed, Tune, FwdKF, RTDeadline, Size" << std::endl;
 
         if (rs.outputCSV)
-            *myfile << std::endl << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize;
+            *myfile << std::endl << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << ", " << sr.videoSize;
 
-        std::cout << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << sr.videoSize << std::endl;
+        std::cout << sr.optimizationPassNumber <<  ", " << sr.bitrate << ", " << sr.vmaf << ", " << sr.cpuTimeP1 << ", " << sr.cpuTimeP2 << ", " << sr.netCpuTime << ", " << sr.realTime << ", " << trueSpeed << ", " << altTune << ", " << fwdKF << ", " << fastDeadline << ", " << sr.videoSize << std::endl;
     }
+
+    std::string f3 = rs.temporaryStorageLocation + "/passfile.dat";
 
 
     if (remove(f1.c_str()) != 0) {
         std::cout << "Error removing " << f1 << std::endl;
     }
     if (remove(f2.c_str()) != 0) {
-        std::cout << "Error removing " << f1 << std::endl;
+        std::cout << "Error removing " << f2 << std::endl;
     }
+    if (remove(f3.c_str()) != 0) {
+        std::cout << "Error removing " << f3 << std::endl;
+    }
+
+    if (twoRuns)
+        return cmdstring(sr, rs, 1);
+
+    return cmdstring(sr, rs, 0);
 }
 
 

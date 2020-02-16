@@ -54,7 +54,7 @@ namespace runner
         bool testFwdFrames = false;
         int bits = 8;
         int xRes = 0;
-        int yRes = 720;
+        int yRes = 0;
         int videoxRes = 1;
         int videoyRes = 1;
         int videoFPSNum = 1;
@@ -84,7 +84,7 @@ namespace runner
     double getNextTestQFactor(std::vector<singleRun> &runsList, double target, long passNum, double defaultQ = 30);
     void decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt,
                 const char *filename);
-    void runSim(singleRun& sr, runSettings rs, std::ofstream *myfile = nullptr);
+    std::string runSim(singleRun& sr, runSettings rs, std::ofstream *myfile = nullptr);
 
     void _mkdir(const char *dir);
 };
