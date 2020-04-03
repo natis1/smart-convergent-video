@@ -305,7 +305,7 @@ void runner::doSimulations(runner::runSettings rs)
                 if (runsList.at(i).optimizationPassNumber == 2) {
                     if (firstRunIndex == 0)
                         firstRunIndex = i;
-                    double netValue = std::pow(rs.videoSize / runsList.at(firstRunIndex).videoSize, powerUsed);
+                    double netValue = std::pow(runsList.at(firstRunIndex).videoSize/ rs.videoSize, powerUsed);
                     double rawCost;
                     if (rs.useCPUTime) {
                         rawCost = runsList.at(i).netCpuTime / runsList.at(firstRunIndex).netCpuTime;

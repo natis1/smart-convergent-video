@@ -41,7 +41,7 @@ namespace runner
         std::string encodingProgram = "aomenc";
         std::string vmafModel = "/usr/share/model/vmaf_v0.6.1.pkl";
         double vmafTarget = 95;
-        double vmafEpsilon = 0.05;
+        double vmafEpsilon = 0.5;
         double timeCostRatio = 10;
         double timescaleTarget = 0.01;
         double cores = 1.0;
